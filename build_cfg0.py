@@ -39,7 +39,7 @@ class CFGBuilder0(CFGBuilder):
         CFGBuilder.__init__(self)
 
         self.stat = Statistics(binSize, stdDevThreshold)
-        self.ifb = InputFileBuffer(10000, samplesFile)
+        self.ifb = InputFileBuffer(50000, samplesFile)
         self.batchSize = batchSize
         self.binSize = binSize
         self.stdDevThreshold = stdDevThreshold
@@ -65,13 +65,18 @@ class CFGBuilder0(CFGBuilder):
 
             b = self.stat.getBinFromAddr(i.pc)
 
-            if b is None:
+            if b is None and (justBuild == 0):
                 return
 
-            if b.count > self.recurrentThreshold or justBuild:
+            if b is not None:
+                recurrent = b.count > self.recurrentThreshold
+            else:
+                recurrent = False
+
+            if recurrent or justBuild==1:
 
                 # logger.debug("i: 0x%x", i.pc)
-                if (self.targets.has_key(i.pc)):
+                if (self.targets.has_key(i.pc)) or (justBuild==1):
                     # logger.debug("\t is target...")
                     bb = self.bbr.getBB(i.pc)
                     if not bb:
@@ -115,9 +120,11 @@ class CFGBuilder0(CFGBuilder):
                                 else:
                                     self.targets[i.target] = 1
 
-                                justBuild = 1 if b.count > self.recurrentThreshold else 0
+                                # justBuild = 1 if b.count > self.recurrentThreshold else 0
+                                #
+                                # self.buildCFGR(instrGen, justBuild, ib)
 
-                                self.buildCFGR(instrGen, justBuild, ib)
+                                self.buildCFGR(instrGen, 0, ib)
 
                                 targetBB = self.bbr.getBB(i.target)
                             else:
@@ -130,7 +137,7 @@ class CFGBuilder0(CFGBuilder):
                                 else:
                                     self.targets[iafter.pc] = 1
 
-                                self.buildCFGR(instrGen, justBuild, ib)
+                                self.buildCFGR(instrGen, 0, ib)
 
                                 targetBB = self.bbr.getBB(iafter.pc)
 
@@ -178,13 +185,6 @@ class CFGBuilder0(CFGBuilder):
             if ib.batchId % 100 == 0:
                 logger.debug("batch %d", ib.batchId)
 
-            #for i in ib.instructions:
-            # if i.isBranchOrCall():
-            #     if self.targets.has_key(i.target):
-            #         self.targets[i.target] += 1
-            #     else:
-            #         self.targets[i.target] = 1
-
             if ib.meanWindowStdev <= self.stdDevThreshold:
                 instrGen = ib.genInstruction()
                 self.buildCFGR(instrGen, 0, ib)
@@ -196,6 +196,7 @@ class CFGBuilder0(CFGBuilder):
                 instrGen = ib.genInstruction()
 
                 for i in instrGen:
+
                     if i.isBranchOrCall():
                         if self.targets.has_key(i.target):
                             self.targets[i.target] += 1
@@ -227,67 +228,6 @@ class CFGBuilder0(CFGBuilder):
                                     otherBB.addSource(bb)
                                     self.cfg.addOrIncrementEdge(bb, otherBB)
                                     self.highStdevEdges+=1
-
-                    # b = self.stat.getBinFromAddr(i.pc)
-                    #
-                    # if b is None:
-                    #     continue
-
-                    # if b.count > self.recurrentThreshold:
-                    #     if not printedIns:
-                    #         logger.debug("batch id: %d", ib.batchId)
-                    #         logger.debug("mean window stdev: %d", ib.meanWindowStdev)
-                    #         logger.debug("window mean: %d", ib.meanWindowMean)
-                    #
-                    #         for kk in range(ib.instructions.size):
-                    #             logger.debug("%d: %s", kk, str(ib.instructions[kk]))
-                    #         printedIns = True
-                    #
-                    #     logger.debug("")
-                    #     logger.debug("%x is recurrent bin! %d", b.address, b.count)
-                    #     logger.debug("an instruction: %s", i)
-
-
-                #print "stdev: ", ib.meanWindowStdev
-                #printedIns = False
-
-                # for i in range(ib.meanWindows.size):
-                #     k = ib.meanWindows[i]
-                #     #print "k = ", hex(k)
-                #     b = self.stat.getBinFromAddr(k)
-                #
-                #     if b is None:
-                #         break
-                #
-                #     for ii in range(ib.instructions.size):
-                #         if (b.address >= ib.instructions[ii].pc - self.windowSize) and (b.address >= ib.instructions[ii].pc + self.windowSize):
-                #             #TODO: detectar os blocos recorrentes em janelas com desvio padrao alto
-                #             if b.count > self.recurrentThreshold:
-                #                 if not printedIns:
-                #                     logger.debug("batch id: %d", ib.batchId)
-                #                     logger.debug("mean window stdev: %d", ib.meanWindowStdev)
-                #                     logger.debug("window mean: %d", ib.meanWindowMean)
-                #
-                #                     for ii in range(ib.instructions.size):
-                #                         logger.debug("%d: %s", ii, str(ib.instructions[ii]))
-                #                     printedIns = True
-                #
-                #                 logger.debug("")
-                #                 logger.debug("%x in position %d", k, i)
-                #                 logger.debug("%x is recurrent bin! %d", b.address, b.count)
-                #                 logger.debug("an instruction: %s", ib.instructions[i])
-                #             break
-
-
-
-
-
-
-
-
-
-
-
 
 
             # if i.pc not in totalIns:
@@ -367,6 +307,7 @@ if __name__ == "__main__":
     #builder = CFGBuilder0("isampling50.out", batchSize=50, binSize=30 , stdDevThreshold=500, windowSize=10, recurrentThreshold=15)
     #builder = CFGBuilder0("isampling50_matmul.out", batchSize=50, binSize=30 , stdDevThreshold=100, windowSize=10, recurrentThreshold=10)
 
+    #bem loco!!!
     builder = CFGBuilder0("isampling50.out", batchSize=50, binSize=30 , stdDevThreshold=500, windowSize=25, recurrentThreshold=15)
 
     builder.buildCFG()
