@@ -4,9 +4,57 @@ from bbrepository import *
 
 
 class CFG:
-    def __init__(self):
+    def __init__(self, dotFile=None):
         self.edges = dict()
         self.bbs = dict()
+
+        if dotFile is not None:
+            self.__loadFromDot(dotFile)
+
+    def __loadFromDot(self, dotFile):
+        f = open(dotFile)
+
+        bbr = BBRepository()
+
+        line = f.readline()
+        while line != "":
+
+            if line.find("->") != -1:
+                line = line.split("->")
+
+                sourceAddr = int(line[0].strip().replace("_", ""),16)
+                targetAddr = int(line[1].strip().split(" ")[0].replace("_", ""),16)
+
+                source = bbr.getBBWithEntryAddress(sourceAddr)
+                if source is None:
+                    source = BB(sourceAddr)
+                    bbr.addBB(source)
+
+                target = bbr.getBBWithEntryAddress(targetAddr)
+                if target is None:
+                    target = BB(targetAddr)
+                    bbr.addBB(target)
+
+                source.addTarget(target)
+                target.addSource(source)
+                self.addOrIncrementEdge(source, target)
+
+            # else:
+            #     if line.find("}") == -1:
+            #         print "line containing a node"
+
+            line = f.readline()
+
+    def similarity(self, otherCFG):
+        edges =  self.edges.keys()
+        edges.sort(key=lambda x: x[0])
+        matches = 0
+
+        for i in edges:
+            if i in otherCFG.edges:
+                matches+=1
+
+        return matches
 
     def addOrIncrementEdge(self, sourceBB, targetBB):
         edge = (sourceBB.entryAddress, targetBB.entryAddress)
@@ -45,7 +93,15 @@ class CFG:
         for i in edges:
             print hex(i[0].entryAddress), ' -> ', hex(i[1].entryAddress), "(", i[2], ')'
 
-    def toDot(self, dotFilename):
+    def toDot(self, dotFilename, graphToolCompat, edgeLabels):
+        '''
+        Prints out the graph as a DOT file.
+        :param dotFilename: string
+        :param graphToolCompat: boolean
+        :param edgeLabels: boolean
+        :return: None
+        '''
+
         out = open(dotFilename, "w")
         out.write("digraph{\n")
 
@@ -54,9 +110,13 @@ class CFG:
             instrList = self.bbs[i].instructions.items()
             instrList.sort(key=lambda x: x[0])
             # str(instrList[0][1].image)
-            out.write("\t_" + hex(self.bbs[i].entryAddress) + " [label=\"" + str(instrList[0][1].image) + "\n" + hex(
-                self.bbs[i].entryAddress) + "\n" + ("done" if self.bbs[i].done else "not done") + "\n" + str(
-                len(self.bbs[i].getInstructions())) + " instructions" + "\"]" "\n")
+
+            if graphToolCompat:
+                out.write("\t_" + hex(self.bbs[i].entryAddress) + " [label=\"_" + hex(self.bbs[i].entryAddress) + "\"]\n")
+            else:
+                out.write("\t_" + hex(self.bbs[i].entryAddress) + " [label=\"" + str(instrList[0][1].image) + "\\n" + hex(
+                    self.bbs[i].entryAddress) + "\\n" + ("done" if self.bbs[i].done else "not done") + "\\n" + str(
+                    len(self.bbs[i].getInstructions())) + " instructions" + "\"]" "\n")
 
             for k in self.bbs[i].targets:
                 edge = (self.bbs[i].entryAddress, k.entryAddress)
@@ -65,8 +125,12 @@ class CFG:
 
         # cada elemento de edges eh uma tupla (source, target, number_of_transitions)
         for i in edges:
-            out.write(
-                "\t_" + hex(i[0].entryAddress) + ' -> _' + hex(i[1].entryAddress) + "[label=\"" + str(i[2]) + '\"]\n')
+            if edgeLabels:
+                out.write(
+                    "\t_" + hex(i[0].entryAddress) + ' -> _' + hex(i[1].entryAddress) + " [label=\"" + str(i[2]) + '\"]\n')
+            else:
+                out.write(
+                    "\t_" + hex(i[0].entryAddress) + ' -> _' + hex(i[1].entryAddress) + "\n")
 
         out.write("}\n")
         out.close()

@@ -24,6 +24,12 @@ class BBRepository:
             self.blocks[bb.entryAddress] = bb
             return True
 
+    def getBBWithEntryAddress(self, entryAddress):
+        for i in self.blocks:
+            if self.blocks[i].entryAddress == entryAddress:
+                return self.blocks[i]
+        return None
+
     def getBB(self, address):
         """
         :param address: int
@@ -32,7 +38,7 @@ class BBRepository:
         for i in self.blocks:
             if self.blocks[i].hasInstruction(address):
                 return self.blocks[i]
-        return False
+        return None
 
 
 if __name__ == '__main__':
