@@ -149,7 +149,6 @@ class CFGBuilder0(CFGBuilder):
                         except StopIteration:
                             break
 
-            #TODO: pra arrumar isto tem que verificar qual a instrucao que foi executada depois dessa...
             #TODO: talvez quem que mexer em todos que usam "target" self.targets.has_key(i.target)
             if i.isBranchOrCall():
                 iafter = ib.getInstructionAfter(i)
@@ -174,6 +173,9 @@ class CFGBuilder0(CFGBuilder):
         lowstdev = 0
         highstdev = 0
 
+        lowstdevValues = []
+        histdevValues = []
+
         stddevs = []
 
         while (moreBatches):
@@ -192,8 +194,10 @@ class CFGBuilder0(CFGBuilder):
                 instrGen = ib.genInstruction()
                 self.buildCFGR(instrGen, 0, ib)
                 lowstdev+=1
+                lowstdevValues.append(ib.meanWindowStdev)
             else:
                 highstdev+=1
+                histdevValues.append(ib.meanWindowStdev)
 
                 printedIns = False
                 instrGen = ib.genInstruction()
@@ -251,8 +255,6 @@ class CFGBuilder0(CFGBuilder):
             #     else:
             #         self.targets[i.target] = 1
 
-
-
         #
         # commonBinList = commonBinIns.items()
         #
@@ -295,6 +297,14 @@ class CFGBuilder0(CFGBuilder):
         print "number of high standard deviation recurrent edges marked: ", self.highStdevEdges
         print "number of high standard deviation basic block build tries: ", self.numHighStdevTries
         print "number of high standard deviation basic block actually built: ", self.numHighStdevOK
+
+        histdevValues.sort()
+        lowstdevValues.sort()
+
+        print "high stdev values", histdevValues
+        print "hsv mean = ", np.mean(histdevValues), "+-" ,np.std(histdevValues)
+        print "low stdev values", lowstdevValues
+        print "lo mean = ", np.mean(lowstdevValues), "+-" ,np.std(lowstdevValues)
 
         #implementar metricas: quantidade de instrucoes e blocos basicos por funcao
 
@@ -526,9 +536,7 @@ if __name__ == "__main__":
     #bem loco!!!
     #builder = CFGBuilder0("isampling50.out", batchSize=50, binSize=30 , stdDevThreshold=500, windowSize=25, recurrentThreshold=15)
 
-    #TODO: mudar o prefixo para ser apenas "_", retirando o "a"
-
-    builder = CFGBuilder0("isampling50.out", batchSize=50, binSize=30 , stdDevThreshold=500, windowSize=30, recurrentThreshold=15)
+    builder = CFGBuilder0("isampling50.out", batchSize=50, binSize=30 , stdDevThreshold=500, windowSize=25, recurrentThreshold=15)
 
     builder.buildCFG()
 
